@@ -6,7 +6,7 @@
 #                                                      #
 #  Author: Jean Prunneaux (http://jean.prunneaux.com)  #
 #                                                      #
-#  Version 2.0.0 (2017-02-03)                          #
+#  Version 2.1.0 (2017-02-04)                          #
 #                                                      #
 ########################################################
 
@@ -15,10 +15,12 @@
 ####################
 
 declare -i tb_tests=0
+tb_dependencies=()
 tb_success=()
 tb_errors=()
 tb_current_directory="$(dirname "$0")"
 tb_tests_directory="$tb_current_directory/tests/"
+tb_dependencies_directory="$tb_current_directory/dependencies/"
 
 
 ###############
@@ -258,41 +260,45 @@ done
 
 # load dependencies before run
 if $tb_load_dependencies ; then
-
-	tb_dependencies=false
 	echo "Load dependencies..."
+fi
 
-	# load dependencies in dependencies/ directory
-	for tb_d in $(find "$tb_current_directory/dependencies" -name '*.sh') ; do
+# load dependencies in dependencies/ directory
+for tb_d in $(find "$tb_dependencies_directory" -name '*.sh') ; do
+	tb_dependencies+=("$tb_d")
+
+	if $tb_load_dependencies ; then
 		echo "Loading $tb_d..."
 		source "$tb_d"
-		if [ $? == 0 ] ; then
-			tb_dependencies=true
-		else
+		if [ $? != 0 ] ; then
 			echo "Failed! Please check your file."
 			exit 2
 		fi
-	done
+	fi
+done
 
-	# load dependencies from command line arguments
-	for tb_d in ${@: OPTIND} ; do
-		if ! [ -f "$tb_d" ] ; then
-			echo "ERROR: $tb_d is not a file!"
-			exit 1
-		fi
+# load dependencies from command line arguments
+for tb_d in ${@: OPTIND} ; do
+	if ! [ -f "$tb_d" ] ; then
+		echo "ERROR: $tb_d is not a file!"
+		exit 1
+	fi
 
+	tb_dependencies+=("$tb_d")
+
+	if $tb_load_dependencies ; then
 		echo "Loading $tb_d..."
 		source "$tb_d"
-		if [ $? == 0 ] ; then
-			tb_dependencies=true
-		else
+		if [ $? != 0 ] ; then
 			echo "... Failed! Please check your file."
 			exit 2
 		fi
-	done
+	fi
+done
 
-	# no dependencies
-	if ! $tb_dependencies ; then
+# no dependencies
+if $tb_load_dependencies ; then
+	if [ ${#tb_dependencies[@]} == 0 ] ; then
 		echo "ERROR: Missing dependencies!"
 		tb_usage
 		exit 2
@@ -321,10 +327,16 @@ for tb_testfile in $(find "$tb_tests_directory" -name '*.sh') ; do
 
 	# run test file
 	source "$tb_testfile"
+	testfile_res=$?
 
 	# remove debug mode to avoid unnecessary log
 	if $tb_debugmode ; then
 		set +x
+	fi
+
+	if [ $testfile_res != 0 ] ; then
+		tb_errors+=("$tb_testfile returned error ($testfile_res)")
+		break
 	fi
 done
 
