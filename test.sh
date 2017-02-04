@@ -320,6 +320,9 @@ for tb_testfile in $(find "$tb_tests_directory" -name '*.sh' | sort) ; do
 	echo
 	echo "Running tests from '$(basename $tb_testfile)':"
 
+	tb_current_test_file="$tb_testfile"
+	tb_current_test_directory="$(dirname "$tb_testfile")"
+
 	# enable debug mode
 	if $tb_debugmode ; then
 		set -x
