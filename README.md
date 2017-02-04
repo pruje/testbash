@@ -55,6 +55,12 @@ tb_test [OPTIONS] COMMAND|VALUE
 
 \** e.g. `tb_test -r "hello" -v $greetings` checks if variable `$greetings` contains 'hello'
 
+## Variables
+You can use some context variables:
+- `$tb_dependencies` (array): contains list of file dependencies
+- `$tb_current_test_file`: path of the current test file
+- `$tb_current_test_directory`: directory path of the current test file
+
 ## License
 testbash is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for the full license text.
 
