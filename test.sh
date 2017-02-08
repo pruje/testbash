@@ -102,7 +102,7 @@ tb_test() {
 	# set test name
 	if [ -z "$tb_testname" ] ; then
 		if $tb_testvalue ; then
-			tb_testname="$*=$tb_expected_result"
+			tb_testname="\"$tb_expected_result\" = \"$*\""
 		else
 			tb_testname="$*"
 
@@ -216,7 +216,7 @@ tb_test() {
 		else
 			tb_txterror="$tb_testname (code: $tb_res_code/$tb_expected_code"
 			if [ "$tb_expected_result" != "*" ] ; then
-				tb_txterror+=", returned: $tb_result/$tb_expected_result"
+				tb_txterror+=", returned: \"$tb_result\" / \"$tb_expected_result\""
 			fi
 			tb_txterror+=")"
 		fi
