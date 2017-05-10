@@ -264,7 +264,7 @@ if $tb_load_dependencies ; then
 fi
 
 # load dependencies in dependencies/ directory
-for tb_d in $(find "$tb_dependencies_directory" -name '*.sh' | sort) ; do
+for tb_d in $(find -L "$tb_dependencies_directory" -name '*.sh' | sort) ; do
 	tb_dependencies+=("$tb_d")
 
 	if $tb_load_dependencies ; then
@@ -314,7 +314,7 @@ fi
 echo "Running unit tests..."
 
 # load test files
-for tb_testfile in $(find "$tb_tests_directory" -name '*.sh' | sort) ; do
+for tb_testfile in $(find -L "$tb_tests_directory" -name '*.sh' | sort) ; do
 	echo
 	echo "-----------------------------"
 	echo
