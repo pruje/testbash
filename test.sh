@@ -6,7 +6,7 @@
 #                                                      #
 #  Author: Jean Prunneaux (http://jean.prunneaux.com)  #
 #                                                      #
-#  Version 2.1.0 (2017-02-04)                          #
+#  Version 2.2.0 (2017-05-10)                          #
 #                                                      #
 ########################################################
 
@@ -67,36 +67,36 @@ tb_test() {
 
 	tb_tests+=1
 
-	while true ; do
-		case "$1" in
+	while [ -n "$1" ] ; do
+		case $1 in
 			-i|--interactive)
 				tb_interactive=true
-				shift
 				;;
 			-c|--exit-code)
-				tb_expected_code="$2"
-				shift 2
+				tb_expected_code=$2
+				shift
 				;;
 			-r|--return)
-				tb_expected_result="$2"
-				shift 2
+				tb_expected_result=$2
+				shift
 				;;
 			-v|--value)
 				tb_testvalue=true
-				shift
 				;;
 			-n|--name)
-				tb_testname="$2"
-				shift 2
+				tb_testname=$2
+				shift
 				;;
 			-q|--quiet)
 				tb_quietmode=true
-				shift
 				;;
 			*)
 				break
 				;;
 		esac
+
+		# load next argument
+		shift
 	done
 
 	# set test name
@@ -122,8 +122,15 @@ tb_test() {
 	# test value mode
 	if $tb_testvalue ; then
 		tb_res_code=$tb_expected_code
-		tb_result="$*"
+		tb_result=$*
 	else
+		# get command
+		tb_cmd=()
+		while [ -n "$1" ] ; do
+			tb_cmd+=("$1")
+			shift
+		done
+
 		# or test command
 		if $tb_interactive ; then
 			# interactive mode
@@ -135,7 +142,7 @@ tb_test() {
 				fi
 
 				# run command
-				$* &> /dev/null
+				"${tb_cmd[@]}" &> /dev/null
 
 			else
 				# enable debugging
@@ -144,7 +151,7 @@ tb_test() {
 				fi
 
 				# run command
-				$*
+				"${tb_cmd[@]}"
 			fi
 		else
 			if $tb_quietmode ; then
@@ -154,7 +161,7 @@ tb_test() {
 				fi
 
 				# run command
-				tb_result="$($* &> /dev/null)"
+				tb_result=$("${tb_cmd[@]}" &> /dev/null)
 			else
 				# enable debugging
 				if $tb_debugmode ; then
@@ -162,7 +169,7 @@ tb_test() {
 				fi
 
 				# run command
-				tb_result="$($*)"
+				tb_result=$("${tb_cmd[@]}")
 			fi
 		fi
 
