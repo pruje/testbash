@@ -5,7 +5,7 @@ Run unit tests for your bash scripts and libraries.
 1. Create file(s) with tests instructions (see below for usage and examples) in `tests/` directory with `.sh` suffix(es)
 2. Import your dependencies (bash scripts with `.sh` extensions), either in putting them into `dependencies/` directory
 and/or giving their path as argument of the script
-3. Run `test.sh`
+3. Run `testbash.sh`
 
 ## Examples
 There are [few examples here](examples/).
@@ -14,7 +14,7 @@ You can also check [this project](https://github.com/pruje/libbash-tests) that i
 
 ## Usage
 ```bash
-./test.sh [OPTIONS] [SCRIPT...]
+./testbash.sh [OPTIONS] [SCRIPT...]
 ```
 
 ## Options
