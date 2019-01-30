@@ -6,7 +6,7 @@
 #                                                      #
 #  Author: Jean Prunneaux (http://jean.prunneaux.com)  #
 #                                                      #
-#  Version 2.2.0 (2017-05-10)                          #
+#  Version 2.3.0 (2019-01-30)                          #
 #                                                      #
 ########################################################
 
@@ -18,9 +18,9 @@ declare -i tb_tests=0
 tb_dependencies=()
 tb_success=()
 tb_errors=()
-tb_current_directory="$(dirname "$0")"
-tb_tests_directory="$tb_current_directory/tests/"
-tb_dependencies_directory="$tb_current_directory/dependencies/"
+tb_current_directory=$(dirname "$0")
+tb_tests_directory=$tb_current_directory/tests
+tb_dependencies_directory=$tb_current_directory/dependencies
 
 
 ###############
@@ -30,11 +30,11 @@ tb_dependencies_directory="$tb_current_directory/dependencies/"
 # Print script usage
 # Usage: tb_usage
 tb_usage() {
-	echo "Usage: $0 [OPTIONS] [SCRIPT...]"
+	echo "Usage: testbash.sh [OPTIONS] [SCRIPT...]"
 	echo "Options:"
-	echo "  -l  load dependencies before running tests (useful to test a library)"
-	echo "  -d  run in debug mode (uses bash set -x command)"
-	echo "  -h  print help"
+	echo "  -l  Load dependencies before running tests (useful to test a library)"
+	echo "  -d  Run in debug mode (uses bash set -x command)"
+	echo "  -h  Print this help"
 	echo
 	echo "Put your unit tests files in the tests/ directory with '.sh' extensions."
 }
@@ -53,42 +53,36 @@ tb_usage() {
 tb_test() {
 
 	# remove debug mode to avoid unnecessary log
-	if $tb_debugmode ; then
-		set +x
-	fi
+	$tb_debugmode && set +x
 
 	# default values
-	tb_expected_code=0
-	tb_expected_result="*"
-	tb_interactive=false
-	tb_testname=""
-	tb_quietmode=false
-	tb_testvalue=false
+	local expected_exitcode=0 expected_result="*" \
+	      test_name interactive=false quiet_mode=false test_value=false
 
 	tb_tests+=1
 
 	while [ -n "$1" ] ; do
 		case $1 in
 			-i|--interactive)
-				tb_interactive=true
+				interactive=true
 				;;
 			-c|--exit-code)
-				tb_expected_code=$2
+				expected_exitcode=$2
 				shift
 				;;
 			-r|--return)
-				tb_expected_result=$2
+				expected_result=$2
 				shift
 				;;
 			-v|--value)
-				tb_testvalue=true
+				test_value=true
 				;;
 			-n|--name)
-				tb_testname=$2
+				test_name=$2
 				shift
 				;;
 			-q|--quiet)
-				tb_quietmode=true
+				quiet_mode=true
 				;;
 			*)
 				break
@@ -100,29 +94,27 @@ tb_test() {
 	done
 
 	# set test name
-	if [ -z "$tb_testname" ] ; then
-		if $tb_testvalue ; then
-			tb_testname="\"$tb_expected_result\" = \"$*\""
+	if [ -z "$test_name" ] ; then
+		if $test_value ; then
+			test_name="\"$expected_result\" = \"$*\""
 		else
-			tb_testname="$*"
+			test_name=$*
 
-			if [ -z "$tb_testname" ] ; then
-				tb_testname="{empty command}"
+			if [ -z "$test_name" ] ; then
+				test_name="{empty command}"
 			fi
 		fi
 	fi
 
 	echo
-	echo "Run unit test for $tb_testname..."
+	echo "Run unit test for $test_name..."
 
-	tb_result=""
-	tb_codeok=false
-	tb_resok=false
+	local result exitcode_ok=false result_ok=false
 
 	# test value mode
-	if $tb_testvalue ; then
-		tb_res_code=$tb_expected_code
-		tb_result=$*
+	if $test_value ; then
+		exitcode=$expected_exitcode
+		result=$*
 	else
 		# get command
 		tb_cmd=()
@@ -132,108 +124,96 @@ tb_test() {
 		done
 
 		# or test command
-		if $tb_interactive ; then
+		if $interactive ; then
 			# interactive mode
 
-			if $tb_quietmode ; then
+			if $quiet_mode ; then
 				# enable debugging
-				if $tb_debugmode ; then
-					set -x
-				fi
+				$tb_debugmode && set -x
 
 				# run command
 				"${tb_cmd[@]}" &> /dev/null
 
 			else
 				# enable debugging
-				if $tb_debugmode ; then
-					set -x
-				fi
+				$tb_debugmode && set -x
 
 				# run command
 				"${tb_cmd[@]}"
 			fi
 		else
-			if $tb_quietmode ; then
+			if $quiet_mode ; then
 				# enable debugging
-				if $tb_debugmode ; then
-					set -x
-				fi
+				$tb_debugmode && set -x
 
 				# run command
-				tb_result=$("${tb_cmd[@]}" &> /dev/null)
+				result=$("${tb_cmd[@]}" &> /dev/null)
 			else
 				# enable debugging
-				if $tb_debugmode ; then
-					set -x
-				fi
+				$tb_debugmode && set -x
 
 				# run command
-				tb_result=$("${tb_cmd[@]}")
+				result=$("${tb_cmd[@]}")
 			fi
 		fi
 
 		# get command result
-		tb_res_code=$?
+		exitcode=$?
 
 		# remove debug mode to avoid unnecessary log
-		if $tb_debugmode ; then
-			set +x
-		fi
+		$tb_debugmode && set +x
 	fi
 
 	# test result code
-	if [ "$tb_expected_code" == "*" ] ; then
-		tb_codeok=true
+	if [ "$expected_exitcode" == "*" ] ; then
+		exitcode_ok=true
 	else
-		if [ $tb_res_code == $tb_expected_code ] ; then
-			tb_codeok=true
+		if [ $exitcode == $expected_exitcode ] ; then
+			exitcode_ok=true
 		fi
 	fi
 
 	# test result
-	if [ "$tb_expected_result" == "*" ] ; then
-		tb_resok=true
+	if [ "$expected_result" == "*" ] ; then
+		result_ok=true
 	else
-		if [ "$tb_result" == "$tb_expected_result" ] ; then
-			tb_resok=true
+		if [ "$result" == "$expected_result" ] ; then
+			result_ok=true
 		fi
 	fi
 
+	local test_file=$(basename "$tb_current_test_file" .sh)
+
 	# if test OK
-	if $tb_codeok && $tb_resok ; then
+	if $exitcode_ok && $result_ok ; then
 		echo "...Passed"
 
 		# log success
-		tb_success+=("$tb_testname")
+		tb_success+=("$test_file: $test_name")
 
 		# enable debugging
-		if $tb_debugmode ; then
-			set -x
-		fi
+		$tb_debugmode && set -x
 
-		return
+		return 0
 
 	else
 		echo "...FAILED"
 
 		# log error details
-		if $tb_testvalue ; then
-			tb_txterror="$tb_testname"
-		else
-			tb_txterror="$tb_testname (code: $tb_res_code/$tb_expected_code"
-			if [ "$tb_expected_result" != "*" ] ; then
-				tb_txterror+=", returned: \"$tb_result\" / \"$tb_expected_result\""
+		error_details="$test_file: $test_name"
+
+		if ! $test_value ; then
+			error_details+=" (code: $exitcode/$expected_exitcode"
+			if [ "$expected_result" != "*" ] ; then
+				error_details+=", returned: \"$result\" / \"$expected_result\""
 			fi
-			tb_txterror+=")"
+			error_details+=")"
 		fi
 
-		tb_errors+=("$tb_txterror")
+		tb_errors+=("$error_details")
 
 		# enable debugging
-		if $tb_debugmode ; then
-			set -x
-		fi
+		$tb_debugmode && set -x
 
 		return 1
 	fi
@@ -258,17 +238,12 @@ while getopts ":ldh" tb_opts ; do
 		h) tb_usage
 		   exit 0
 		   ;;
-		\?) echo "ERROR: '"$OPTARG"' option does not exist."
+		\?) echo "ERROR: '$OPTARG' option does not exist."
 		    tb_usage
 		    exit 1
 		    ;;
 	esac
 done
-
-# load dependencies before run
-if $tb_load_dependencies ; then
-	echo "Load dependencies..."
-fi
 
 # load dependencies in dependencies/ directory
 for tb_d in $(find -L "$tb_dependencies_directory" -name '*.sh' | sort) ; do
@@ -285,7 +260,7 @@ for tb_d in $(find -L "$tb_dependencies_directory" -name '*.sh' | sort) ; do
 done
 
 # load dependencies from command line arguments
-for tb_d in ${@: OPTIND} ; do
+for tb_d in "${@: OPTIND}" ; do
 	if ! [ -f "$tb_d" ] ; then
 		echo "ERROR: $tb_d is not a file!"
 		exit 1
@@ -327,22 +302,18 @@ for tb_testfile in $(find -L "$tb_tests_directory" -name '*.sh' | sort) ; do
 	echo
 	echo "Running tests from '$(basename $tb_testfile)':"
 
-	tb_current_test_file="$tb_testfile"
-	tb_current_test_directory="$(dirname "$tb_testfile")"
+	tb_current_test_file=$tb_testfile
+	tb_current_test_directory=$(dirname "$tb_testfile")
 
 	# enable debug mode
-	if $tb_debugmode ; then
-		set -x
-	fi
+	$tb_debugmode && set -x
 
 	# run test file
 	source "$tb_testfile"
 	testfile_res=$?
 
 	# remove debug mode to avoid unnecessary log
-	if $tb_debugmode ; then
-		set +x
-	fi
+	$tb_debugmode && set +x
 
 	if [ $testfile_res != 0 ] ; then
 		tb_errors+=("$tb_testfile returned error ($testfile_res)")
@@ -366,7 +337,7 @@ if [ $tb_tests == 0 ] ; then
 fi
 
 if [ ${#tb_errors[@]} == 0 ] ; then
-	echo "Test succeeded!"
+	echo "All test succeeded!"
 else
 	echo "Some tests failed!"
 fi
@@ -374,15 +345,15 @@ fi
 if [ ${#tb_success[@]} -gt 0 ] ; then
 	echo
 	echo "Success: (${#tb_success[@]}/$tb_tests)"
-	for ((tb_i=0; tb_i<${#tb_success[@]}; tb_i++)) ; do
-		echo "   - ${tb_success[$tb_i]}"
+	for tb_i in "${tb_success[@]}" ; do
+		echo "   - $tb_i"
 	done
 fi
 if [ ${#tb_errors[@]} -gt 0 ] ; then
 	echo
 	echo "Errors: (${#tb_errors[@]}/$tb_tests)"
-	for ((tb_i=0; tb_i<${#tb_errors[@]}; tb_i++)) ; do
-		echo "   - ${tb_errors[$tb_i]}"
+	for tb_i in "${tb_errors[@]}" ; do
+		echo "   - $tb_i"
 	done
 
 	exit 4
