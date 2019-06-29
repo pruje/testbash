@@ -109,15 +109,14 @@ tb_test() {
 	# set test name
 	if [ -z "$test_name" ] ; then
 		if $test_value ; then
-			test_name="\"$expected_result\" = \"$*\""
+			test_name="test value"
 		else
 			test_name=$*
-
-			if [ -z "$test_name" ] ; then
-				test_name="{empty command}"
-			fi
+			[ -z "$test_name" ] && test_name="{empty command}"
 		fi
 	fi
+
+	$test_value && test_name+=" \"$expected_result\" = \"$*\""
 
 	tb_echo
 	tb_echo "Run unit test for $test_name..."
