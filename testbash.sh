@@ -6,7 +6,7 @@
 #                                                      #
 #  Author: Jean Prunneaux (http://jean.prunneaux.com)  #
 #                                                      #
-#  Version 2.4.0 (2019-02-26)                          #
+#  Version 2.5.0 (2019-09-03)                          #
 #                                                      #
 ########################################################
 
@@ -26,6 +26,21 @@ tb_dependencies_directory=$tb_current_directory/dependencies
 ###############
 #  FUNCTIONS  #
 ###############
+
+# Join an array into string
+# Usage: lb_join DELIMITER "${ARRAY[@]}"
+tb_join() {
+	# usage error
+	[ -z "$1" ] && return 1
+
+	# define delimiter
+	local IFS=$1
+	shift
+
+	# return string
+	echo "$*"
+}
+
 
 # Print something if quiet mode disabled
 # Usage: tb_echo TEXT
@@ -66,7 +81,7 @@ tb_test() {
 	$tb_debugmode && set +x
 
 	# default values
-	local expected_exitcode=0 expected_result="*" \
+	local expected_exitcodes=() expected_results=() \
 	      test_name interactive=false quiet_mode=false test_value=false
 
 	# global quiet mode: force quiet mode
@@ -80,11 +95,11 @@ tb_test() {
 				interactive=true
 				;;
 			-c|--exit-code)
-				expected_exitcode=$2
+				expected_exitcodes+=($2)
 				shift
 				;;
 			-r|--return)
-				expected_result=$2
+				expected_results+=("$2")
 				shift
 				;;
 			-v|--value)
@@ -116,16 +131,23 @@ tb_test() {
 		fi
 	fi
 
-	$test_value && test_name+=" \"$expected_result\" = \"$*\""
+	# default exit code and return
+	[ ${#expected_exitcodes[@]} == 0 ] && expected_exitcodes=(0)
+	[ ${#expected_results[@]} == 0 ] && expected_results=('*')
+
+	# test value mode
+	if $test_value ; then
+		expected_exitcodes=(0)
+		test_name+=" \"$*\" = \"$(tb_join '|' "${expected_results[@]}")\""
+	fi
 
 	tb_echo
 	tb_echo "Run unit test for $test_name..."
 
-	local result exitcode=0 exitcode_ok=false result_ok=false
+	local result exitcode=0
 
 	# test value mode
 	if $test_value ; then
-		exitcode=$expected_exitcode
 		result=$*
 	else
 		# or test command
@@ -166,23 +188,23 @@ tb_test() {
 		$tb_debugmode && set +x
 	fi
 
-	# test result code
-	if [ "$expected_exitcode" == "*" ] ; then
-		exitcode_ok=true
-	else
-		if [ $exitcode == $expected_exitcode ] ; then
+	# test exit code
+	local e exitcode_ok=false
+	for e in "${expected_exitcodes[@]}" ; do
+		if [ "$e" == "*" ] || [ "$exitcode" == "$e" ] ; then
 			exitcode_ok=true
+			break
 		fi
-	fi
+	done
 
 	# test result
-	if [ "$expected_result" == "*" ] ; then
-		result_ok=true
-	else
-		if [ "$result" == "$expected_result" ] ; then
+	local r result_ok=false
+	for r in "${expected_results[@]}" ; do
+		if [ "$r" == "*" ] || [ "$result" == "$r" ] ; then
 			result_ok=true
+			break
 		fi
-	fi
+	done
 
 	local test_file=$(basename "$tb_current_test_file" .sh)
 
@@ -205,9 +227,9 @@ tb_test() {
 		error_details="$test_file: $test_name"
 
 		if ! $test_value ; then
-			error_details+=" (code: $exitcode/$expected_exitcode"
-			if [ "$expected_result" != "*" ] ; then
-				error_details+=", returned: \"$result\" / \"$expected_result\""
+			error_details+=" (code: \"$exitcode\"/\"$(tb_join '|' "${expected_exitcodes[@]}")\""
+			if [ "${expected_results[0]}" != "*" ] ; then
+				error_details+=", returned: \"$result\"/\"$(tb_join '|' "${expected_results[@]}")\""
 			fi
 			error_details+=")"
 		fi
