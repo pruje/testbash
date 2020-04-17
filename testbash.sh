@@ -6,7 +6,7 @@
 #                                                      #
 #  Author: Jean Prunneaux (http://jean.prunneaux.com)  #
 #                                                      #
-#  Version 2.6.0 (2020-04-17)                          #
+#  Version 2.7.0 (2020-04-17)                          #
 #                                                      #
 ########################################################
 
@@ -45,7 +45,25 @@ tb_join() {
 # Print something if quiet mode disabled
 # Usage: tb_echo TEXT
 tb_echo() {
-	[ "$tb_quietmode" == true ] || echo "$*"
+	[ "$tb_quietmode" = true ] || echo "$*"
+}
+
+
+# Run md5 command
+# Usage: tb__md5 FILE
+tb__md5() {
+	if ! [ -f "$*" ] ; then
+		$tb_debugmode && echo "File $* not found!"
+		return 1
+	fi
+
+	if which md5sum &> /dev/null ; then
+		md5sum "$*" | awk '{print $1}'
+	else
+		md5 -r "$*" | awk '{print $1}'
+	fi
+
+	return ${PIPESTATUS[0]}
 }
 
 
@@ -73,6 +91,7 @@ tb_usage() {
 #   -r, --return VALUE    set the expected value returned by the command
 #   -v, --value           check value instead of command return
 #   -f, --file            check file content instead of command return
+#   -m, --md5             check file md5 instead of command return
 #   -n, --name TEXT       specify a name for the test
 #   -q, --quiet           do not print command stdout (useful in interactive mode)
 # Exit code: 0: test OK, 1: test NOT OK
@@ -83,7 +102,8 @@ tb_test() {
 
 	# default values
 	local expected_exitcodes=() expected_results=() \
-	      test_name interactive=false quiet_mode=false test_value=false test_file_content=false
+	      test_name interactive=false quiet_mode=false test_value=false \
+	      test_file_content=false test_md5=false
 
 	# global quiet mode: force quiet mode
 	$tb_quietmode && quiet_mode=true
@@ -109,6 +129,9 @@ tb_test() {
 			-f|--file)
 				test_file_content=true
 				;;
+			-m|--md5)
+				test_md5=true
+				;;
 			-n|--name)
 				test_name=$2
 				shift
@@ -131,6 +154,8 @@ tb_test() {
 			test_name="test value"
 		elif $test_file_content ; then
 			test_name="test file content"
+		elif $test_md5 ; then
+			test_name="test file md5"
 		else
 			test_name=$*
 			[ -z "$test_name" ] && test_name="{empty command}"
@@ -138,8 +163,8 @@ tb_test() {
 	fi
 
 	# default exit code and return
-	[ ${#expected_exitcodes[@]} == 0 ] && expected_exitcodes=(0)
-	[ ${#expected_results[@]} == 0 ] && expected_results=('*')
+	[ ${#expected_exitcodes[@]} = 0 ] && expected_exitcodes=(0)
+	[ ${#expected_results[@]} = 0 ] && expected_results=('*')
 
 	# test value mode
 	if $test_value ; then
@@ -147,7 +172,7 @@ tb_test() {
 		test_name+=" \"$*\" = \"$(tb_join '|' "${expected_results[@]}")\""
 	fi
 
-	# test file mode
+	# test file content
 	if $test_file_content ; then
 		expected_exitcodes=(0)
 		test_name+=" \"$*\""
@@ -162,11 +187,17 @@ tb_test() {
 	if $test_value ; then
 		result=$*
 	elif $test_file_content ; then
-		# test file content
-		result=$(cat "$*" 2> /dev/null) || exitcode=$?
-
 		# debug mode: print file
 		$tb_debugmode && cat "$*"
+
+		# test file content
+		result=$(cat "$*" 2> /dev/null) || exitcode=$?
+	elif $test_md5 ; then
+		# debug mode: run command
+		$tb_debugmode && tb__md5 "$*"
+
+		# test file md5
+		result=$(tb__md5 "$*" 2> /dev/null) || exitcode=$?
 	else
 		# or test command
 		if $interactive ; then
@@ -209,7 +240,7 @@ tb_test() {
 	# test exit code
 	local e exitcode_ok=false
 	for e in "${expected_exitcodes[@]}" ; do
-		if [ "$e" == "*" ] || [ "$exitcode" == "$e" ] ; then
+		if [ "$e" = "*" ] || [ "$exitcode" = "$e" ] ; then
 			exitcode_ok=true
 			break
 		fi
@@ -218,7 +249,7 @@ tb_test() {
 	# test result
 	local r result_ok=false
 	for r in "${expected_results[@]}" ; do
-		if [ "$r" == "*" ] || [ "$result" == "$r" ] ; then
+		if [ "$r" = "*" ] || [ "$result" = "$r" ] ; then
 			result_ok=true
 			break
 		fi
@@ -272,13 +303,13 @@ tb_final_report() {
 	tb_echo "-----------------------------"
 	tb_echo
 
-	if [ $tb_tests == 0 ] ; then
+	if [ $tb_tests = 0 ] ; then
 		echo "No tests found."
 		tb_usage
 		exit 3
 	fi
 
-	if [ ${#tb_errors[@]} == 0 ] ; then
+	if [ ${#tb_errors[@]} = 0 ] ; then
 		echo "All test succeeded!"
 	else
 		echo "Some tests failed!"
@@ -381,7 +412,7 @@ done
 
 # no dependencies
 if $tb_load_dependencies ; then
-	if [ ${#tb_dependencies[@]} == 0 ] ; then
+	if [ ${#tb_dependencies[@]} = 0 ] ; then
 		echo "ERROR: Missing dependencies!"
 		tb_usage
 		exit 2

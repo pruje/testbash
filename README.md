@@ -53,6 +53,7 @@ tb_test [OPTIONS] COMMAND|VALUE
 -r, --return VALUE    set the expected value returned by the command
 -v, --value           check value instead of command return**
 -f, --file            check file content instead of command return**
+-m, --md5             check file md5 instead of command return**
 -n, --name TEXT       specify a name for the test
 -q, --quiet           do not print command stdout (useful in interactive mode)
 ```
@@ -63,6 +64,7 @@ tb_test [OPTIONS] COMMAND|VALUE
 \** value & file modes:
 - e.g. `tb_test -r "hello" -v $greetings` checks if variable `$greetings` contains 'hello'
 - e.g. `tb_test -r "hello" -f myfile.txt` checks if `myfile.txt` contains 'hello'
+- e.g. `tb_test -r 123456789abcdef -m myfile.txt` checks if `myfile.txt` md5 equals 123456789abcdef
 
 ## Variables
 You can use some context variables:
