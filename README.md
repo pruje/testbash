@@ -19,9 +19,12 @@ You can also check [this project](https://github.com/pruje/libbash-tests) that i
 
 ## Options
 ```
--l  load dependencies before running tests (useful to test a library)
--d  run in debug mode (uses bash `set -x` command)
--h  print help
+-l  Load dependencies before running tests (useful to test a library)
+-s  Stop tests immediately if an error occurs
+-e  Enable strict mode (set -e)
+-d  Run in debug mode (uses bash `set -x` command)
+-q  Quiet mode
+-h  Print help
 ```
 
 ## Exit codes
@@ -49,14 +52,17 @@ tb_test [OPTIONS] COMMAND|VALUE
 -c, --exit-code CODE  set the exit code the command should return
 -r, --return VALUE    set the expected value returned by the command
 -v, --value           check value instead of command return**
+-f, --file            check file content instead of command return**
 -n, --name TEXT       specify a name for the test
 -q, --quiet           do not print command stdout (useful in interactive mode)
 ```
 
 \*  interactive mode: use it when you don't need to check command sdtout result and/or to preserve context
-    e.g. Use `tb_test -i cd /path` to stay into `/path` directory, or else it will be executed into a different context
+- e.g. Use `tb_test -i cd /path` to stay into `/path` directory, or else it will be executed into a different context
 
-\** e.g. `tb_test -r "hello" -v $greetings` checks if variable `$greetings` contains 'hello'
+\** value & file modes:
+- e.g. `tb_test -r "hello" -v $greetings` checks if variable `$greetings` contains 'hello'
+- e.g. `tb_test -r "hello" -f myfile.txt` checks if `myfile.txt` contains 'hello'
 
 ## Variables
 You can use some context variables:

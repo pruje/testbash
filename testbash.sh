@@ -6,7 +6,7 @@
 #                                                      #
 #  Author: Jean Prunneaux (http://jean.prunneaux.com)  #
 #                                                      #
-#  Version 2.5.0 (2019-09-03)                          #
+#  Version 2.6.0 (2020-04-17)                          #
 #                                                      #
 ########################################################
 
@@ -72,6 +72,7 @@ tb_usage() {
 #   -c, --exit-code CODE  set the exit code the command should return
 #   -r, --return VALUE    set the expected value returned by the command
 #   -v, --value           check value instead of command return
+#   -f, --file            check file content instead of command return
 #   -n, --name TEXT       specify a name for the test
 #   -q, --quiet           do not print command stdout (useful in interactive mode)
 # Exit code: 0: test OK, 1: test NOT OK
@@ -82,7 +83,7 @@ tb_test() {
 
 	# default values
 	local expected_exitcodes=() expected_results=() \
-	      test_name interactive=false quiet_mode=false test_value=false
+	      test_name interactive=false quiet_mode=false test_value=false test_file_content=false
 
 	# global quiet mode: force quiet mode
 	$tb_quietmode && quiet_mode=true
@@ -105,6 +106,9 @@ tb_test() {
 			-v|--value)
 				test_value=true
 				;;
+			-f|--file)
+				test_file_content=true
+				;;
 			-n|--name)
 				test_name=$2
 				shift
@@ -125,6 +129,8 @@ tb_test() {
 	if [ -z "$test_name" ] ; then
 		if $test_value ; then
 			test_name="test value"
+		elif $test_file_content ; then
+			test_name="test file content"
 		else
 			test_name=$*
 			[ -z "$test_name" ] && test_name="{empty command}"
@@ -141,14 +147,26 @@ tb_test() {
 		test_name+=" \"$*\" = \"$(tb_join '|' "${expected_results[@]}")\""
 	fi
 
+	# test file mode
+	if $test_file_content ; then
+		expected_exitcodes=(0)
+		test_name+=" \"$*\""
+	fi
+
 	tb_echo
-	tb_echo "Run unit test for $test_name..."
+	tb_echo "Running: $test_name..."
 
 	local result exitcode=0
 
 	# test value mode
 	if $test_value ; then
 		result=$*
+	elif $test_file_content ; then
+		# test file content
+		result=$(cat "$*" 2> /dev/null) || exitcode=$?
+
+		# debug mode: print file
+		$tb_debugmode && cat "$*"
 	else
 		# or test command
 		if $interactive ; then
@@ -226,7 +244,7 @@ tb_test() {
 		# log error details
 		error_details="$test_file: $test_name"
 
-		if ! $test_value ; then
+		if ! $test_value && ! $test_file_content ; then
 			error_details+=" (code: \"$exitcode\"/\"$(tb_join '|' "${expected_exitcodes[@]}")\""
 			if [ "${expected_results[0]}" != "*" ] ; then
 				error_details+=", returned: \"$result\"/\"$(tb_join '|' "${expected_results[@]}")\""
